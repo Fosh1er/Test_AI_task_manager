@@ -3,62 +3,114 @@ import pandas as pd
 from pathlib import Path
 from logger import logger
 from pipeline import run_pipeline
-import config  # наш конфиг
+import config
 
 def load_transcript(filename: str) -> str:
     filepath = Path(config.TRANSCRIPTS_DIR) / filename
     if not filepath.exists():
         logger.error(f"Файл не найден: {filepath}")
         raise FileNotFoundError(filepath)
-    logger.info(f"Загрузка транскрипта: {filepath}")
     return filepath.read_text(encoding="utf-8")
 
 def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
     return (df
             .map(lambda x: str(x).strip() if isinstance(x, str) else x)
             .sort_values(by=list(df.columns))
             .reset_index(drop=True))
 
-def main(filename: str = "transcript.txt"):
-    logger.info("=" * 50)
-    logger.info("Запуск проверки стабильности извлечения задач")
-    logger.info(f"Провайдер: {config.PROVIDER_MODE}, модель: {config.MODEL_NAME}")
+def run_stability_test(filename: str, meeting_date: str):
+    logger.info("=" * 60)
+    logger.info(f"Тестирование файла: {filename} (Дата встречи: {meeting_date})")
 
     transcript = load_transcript(filename)
-
-    # Для локального провайдера передаём LLM_KWARGS, для API — пустой словарь
     llm_kwargs = config.LLM_KWARGS if config.PROVIDER_MODE == "local" else {}
 
     results = []
+    stats = []
+
     for run in range(1, 6):
-        logger.info(f"----- Прогон {run}/5 -----")
+        logger.info(f"--- Прогон {run}/5 ---")
         tasks = run_pipeline(
             transcript,
+            meeting_date=meeting_date,
             provider_mode=config.PROVIDER_MODE,
             model=config.MODEL_NAME,
             chunk_size=config.CHUNK_SIZE,
             overlap=config.CHUNK_OVERLAP,
             llm_kwargs=llm_kwargs
         )
+
         df = pd.DataFrame(tasks)
-        if df.empty:
-            logger.warning(f"Прогон {run} вернул пустой список задач")
+        # Приводим к нужному формату колонок согласно ТЗ
+        if not df.empty:
+            df = df.rename(columns={
+                "блок": "Блок",
+                "задача": "Задача",
+                "ответственный": "Ответственный",
+                "срок": "Срок",
+                "обоснование": "Обоснование"
+            })
+            df = normalize_df(df)
+
+        results.append(df)
+
+        # Считаем статистику для отчета
+        if not df.empty:
+            counts = df['Блок'].value_counts()
+            completed = counts.get("Выполненные", 0)
+            failed = counts.get("Невыполненные", 0)
+            new = counts.get("Новые", 0)
+            total = len(df)
         else:
-            logger.info(f"Прогон {run}: извлечено задач {len(df)}")
-        results.append(normalize_df(df))
+            completed = failed = new = total = 0
 
-    base = results[0]
-    stable = True
-    for i, df in enumerate(results[1:], 2):
-        if not base.equals(df):
-            stable = False
-            logger.warning(f"Различие между прогоном 1 и {i}")
-    logger.info(f"Результат: {'СТАБИЛЬНО' if stable else 'НЕ СТАБИЛЬНО'}")
-    print(f"\nСтабильность за 5 прогонов: {'STABLE' if stable else 'NOT STABLE'}")
+        stats.append({
+            "run": run,
+            "completed": completed,
+            "failed": failed,
+            "new": new,
+            "total": total
+        })
 
-    base.to_csv("tasks_extracted.csv", index=False, encoding="utf-8")
-    logger.info("Первый прогон сохранён в tasks_extracted.csv")
+    # Вывод отчета о стабильности
+    print("\nОТЧЕТ ПО СТАБИЛЬНОСТИ:")
+    all_same = True
+    first_stat = stats[0]
+    diff_runs = []
+
+    for s in stats:
+        print(f"run_{s['run']}: Выполненные={s['completed']}, Невыполненные={s['failed']}, Новые={s['new']}, Всего={s['total']}")
+        if s != first_stat:
+            all_same = False
+            diff_runs.append(f"run_{s['run']}")
+
+    print(f"Стабильность по количеству: {'Да' if all_same else 'Нет'}")
+    if not all_same:
+        print(f"Отличаются прогоны: {', '.join(diff_runs)}")
+
+    # Вывод итогового датасета (первого прогона)
+    print("\nИТОГОВЫЙ ДАТАСЕТ (Прогон 1):")
+    if not results[0].empty:
+        print(results[0].to_string())
+    else:
+        print("Задачи не найдены.")
+    print("\n" + "=" * 60 + "\n")
+
+def main():
+    # Соответствие файлов и дат встречи из ТЗ
+    test_files = {
+        "transcript.txt": "2026-04-13",
+        "transcript2.txt": "2026-04-29",
+        "transcript3.txt": "2026-04-15"
+    }
+
+    for filename, date in test_files.items():
+        try:
+            run_stability_test(filename, date)
+        except Exception as e:
+            logger.exception(f"Ошибка при обработке файла {filename}: {e}")
 
 if __name__ == "__main__":
-    fname = sys.argv[1] if len(sys.argv) > 1 else "transcript.txt"
-    main(filename=fname)
+    main()
