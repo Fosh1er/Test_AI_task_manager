@@ -2,7 +2,7 @@ import os
 
 # ---- Провайдер и модель ----
 PROVIDER_MODE = os.getenv("LLM_PROVIDER", "local")   # "local" или "api"
-MODEL_NAME = os.getenv("LLM_MODEL", "qwen3.5:2b")   # имя модели в Ollama или OpenAI
+MODEL_NAME = os.getenv("LLM_MODEL", "qwen3.5:9b")   # имя модели в Ollama или OpenAI
 
 # ---- Параметры для локальной модели (Ollama) ----
 # Настройки для вашего железа: 16 ГБ ОЗУ + RTX 4060

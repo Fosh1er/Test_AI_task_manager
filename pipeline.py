@@ -31,8 +31,8 @@ def build_extraction_chain(llm):
         ("system", system),
         ("user", user_tmpl),
     ])
-    # Добавляем шаг очистки текста перед парсингом JSON
-    return prompt | llm | RunnableLambda(extract_json_from_text) | JsonOutputParser()
+    # Возвращаем цепочку БЕЗ парсера, чтобы иметь доступ к сырому тексту
+    return prompt | llm | RunnableLambda(extract_json_from_text)
 
 
 def build_aggregation_chain(llm):
@@ -78,11 +78,16 @@ def run_pipeline(
     for idx, chunk in enumerate(chunks, 1):
         logger.info(f"Обработка чанка {idx}/{len(chunks)}...")
         try:
-            # Передаём meeting_date в промпт
-            tasks = extract_chain.invoke({"chunk_text": chunk, "meeting_date": meeting_date})
+            # Теперь используем extract_chain, которая возвращает строку (благодаря удалению JsonOutputParser)
+            raw_output = extract_chain.invoke({"chunk_text": chunk, "meeting_date": meeting_date})
+
+            # Теперь пробуем распарсить вручную
+            tasks = JsonOutputParser().parse(raw_output)
             all_partial.append(tasks)
         except Exception as e:
             logger.error(f"Ошибка при обработке чанка {idx}: {e}")
+            if 'raw_output' in locals():
+                logger.error(f"RAW OUTPUT FROM LLM: {raw_output}")
             all_partial.append([])
 
     logger.info("Запуск агрегации частичных списков...")
