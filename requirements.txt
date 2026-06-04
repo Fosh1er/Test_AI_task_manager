@@ -23,7 +23,6 @@ omegaconf
 hydra-core
 tqdm
 einops
-
 # Training and Evaluation (Optional/Dev)
 pytorch-lightning
 editdistance
