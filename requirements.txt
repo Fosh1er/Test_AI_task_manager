@@ -18,7 +18,6 @@ soundfile
 librosa
 onnxruntime
 huggingface-hub
-
 # GigaAM and configuration
 omegaconf
 hydra-core
