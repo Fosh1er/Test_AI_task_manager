@@ -1,6 +1,7 @@
 from providers.api_client import OpenAIProvider
 from providers.local_client import LocalProvider
 from logger import logger
+import config
 
 
 class Provider(object):
@@ -21,7 +22,14 @@ class Provider(object):
             self.client = LocalProvider(model=self.model or "qwen3.5:9b", **kwargs)
         elif self.mode in ("api", "openai"):
             logger.info("Инициализация OpenAI API провайдера")
-            self.client = OpenAIProvider(model=self.model or "gpt-4o", **kwargs)
+            # Если мы в режиме API, используем gpt-4o-mini,
+            # даже если в config.MODEL_NAME указана локальная модель (например, qwen)
+            api_model = self.model if "gpt" in (self.model or "") else "gpt-4o-mini"
+            self.client = OpenAIProvider(
+                model=api_model,
+                proxy=config.PROXY_URL,
+                **kwargs
+            )
         else:
             raise ValueError(f"Неподдерживаемый режим: {self.mode}. Используйте 'local' или 'api'.")
 

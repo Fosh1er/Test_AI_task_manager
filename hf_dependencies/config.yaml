@@ -1,0 +1,7 @@
+version: 3.1.0
+pipeline:
+  name: pyannote.audio.pipelines.SpeakerDiarization
+  params:
+    clustering: AgglomerativeClustering
+    embedding: E:\Проекты\MVP_ASR_AI\hf_dependencies\pytorch_model.bin
+    segmentation: E:\Проекты\MVP_ASR_AI\hf_dependencies\pytorch_model (1).bin

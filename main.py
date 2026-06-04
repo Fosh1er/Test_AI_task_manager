@@ -1,9 +1,30 @@
 import sys
+import os
+
+# 1. Очистка переменных окружения (на всякий случай)
+for key in list(os.environ.keys()):
+    if key.lower() in ['http_proxy', 'https_proxy', 'all_proxy']:
+        del os.environ[key]
+
+# 2. Ядерный патч httpx: заставляем библиотеку игнорировать любые системные прокси
+try:
+    import httpx
+    def dummy_get_proxy_map(self, proxy, allow_env_proxies):
+        return {}
+    # Перезаписываем метод поиска прокси в самом классе Client
+    httpx.Client._get_proxy_map = dummy_get_proxy_map
+    print("SOCKS4 protection: httpx proxy map disabled successfully.")
+except Exception as e:
+    print(f"SOCKS4 protection failed to apply: {e}")
+
 import pandas as pd
 from pathlib import Path
 from logger import logger
 from pipeline import run_pipeline
 import config
+
+# Принудительный сброс буфера вывода для PyCharm/IDE
+os.environ['PYTHONUNBUFFERED'] = '1'
 
 def load_transcript(filename: str) -> str:
     filepath = Path(config.TRANSCRIPTS_DIR) / filename
@@ -25,7 +46,7 @@ def run_stability_test(filename: str, meeting_date: str):
     logger.info(f"Тестирование файла: {filename} (Дата встречи: {meeting_date})")
 
     transcript = load_transcript(filename)
-    llm_kwargs = config.LLM_KWARGS if config.PROVIDER_MODE == "local" else {}
+    llm_kwargs = config.LLM_KWARGS if config.PROVIDER_MODE == "local" else {"api_key": config.OPENAI_API_KEY}
 
     results = []
     stats = []
@@ -101,8 +122,8 @@ def run_stability_test(filename: str, meeting_date: str):
 def main():
     # Соответствие файлов и дат встречи из ТЗ
     test_files = {
-        "transcript.txt": "2026-04-13",
-        "transcript2.txt": "2026-04-29",
+        #"transcript.txt": "2026-04-13",
+        #"transcript2.txt": "2026-04-29",
         "transcript3.txt": "2026-04-15"
     }
 

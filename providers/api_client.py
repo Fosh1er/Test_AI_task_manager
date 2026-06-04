@@ -1,12 +1,21 @@
 from openai import OpenAI
 import time
 import os
+import httpx
 from logger import logger
 
 class OpenAIProvider:
-    def __init__(self, model: str = "gpt-4o", api_key: str = None):
+    def __init__(self, model: str = "gpt-4o-mini", api_key: str = None, proxy: str = None):
         self.model = model
-        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+
+        client_args = {"api_key": api_key or os.getenv("OPENAI_API_KEY")}
+
+        if proxy:
+            logger.info(f"Использование прокси: {proxy}")
+            # В новых версиях httpx параметр называется 'proxy', а не 'proxies'
+            client_args["http_client"] = httpx.Client(proxy=proxy)
+
+        self.client = OpenAI(**client_args)
         self.last_response_info = {}
 
     def complete(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
@@ -17,7 +26,7 @@ class OpenAIProvider:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=kwargs.get("temperature", 0.0),
+            temperature=kwargs.get("temperature", 0.01),
             max_tokens=kwargs.get("max_tokens", 1024),
             seed=kwargs.get("seed")  # для воспроизводимости
         )
