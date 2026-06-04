@@ -1,0 +1,33 @@
+# Core dependencies for the ASR and LLM pipeline
+pandas
+langchain-core
+python-dotenv
+openai
+ollama
+httpx
+
+# Audio Processing and ASR
+torch
+torchaudio
+numpy
+whisperx
+pyannote.audio
+transformers
+sentencepiece
+soundfile
+librosa
+onnxruntime
+huggingface-hub
+
+# GigaAM and configuration
+omegaconf
+hydra-core
+tqdm
+einops
+
+# Training and Evaluation (Optional/Dev)
+pytorch-lightning
+editdistance
+datasets
+pytest
+scipy
