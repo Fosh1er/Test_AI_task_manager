@@ -124,7 +124,8 @@ def main():
     test_files = {
         #"transcript.txt": "2026-04-13",
         #"transcript2.txt": "2026-04-29",
-        "transcript3.txt": "2026-04-15"
+        #"transcript3.txt": "2026-04-15",
+        "transcript_discord.txt": "2026-06-05"
     }
 
     for filename, date in test_files.items():

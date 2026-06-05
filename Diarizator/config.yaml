@@ -1,0 +1,10 @@
+version: 3.1.0
+pipeline:
+  name: pyannote.audio.pipelines.SpeakerDiarization
+  params:
+    clustering: AgglomerativeClustering
+    embedding: pyannote/wespeaker-voxceleb-resnet34-LM
+    embedding_batch_size: 32
+    embedding_exclude_overlap: true
+    segmentation: E:\Проекты\MVP_ASR_AI\Diarizator
+    segmentation_batch_size: 32
