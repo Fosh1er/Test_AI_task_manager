@@ -2,8 +2,13 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 # ---- Провайдер и модель ----
-PROVIDER_MODE = os.getenv("LLM_PROVIDER", "local")   # "local" или "api"
-MODEL_NAME = os.getenv("LLM_MODEL", "qwen3.5:9b")   # имя модели в Ollama или OpenAI
+# config.py
+PROVIDER_MODE = "openrouter"
+#MODEL_NAME = "qwen/qwen3-next-80b-a3b-instruct:free"  # ← правильный формат
+MODEL_NAME = "openai/gpt-oss-120b:free"
+# или любая другая: "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash-001"
+#PROVIDER_MODE = os.getenv("LLM_PROVIDER", "openrouter")   # "local" или "api"
+#MODEL_NAME = os.getenv("LLM_MODEL", "qwen3.5:9b")   # имя модели в Ollama или OpenAI
 
 # ---- Параметры для локальной модели (Ollama) ----
 # Настройки для вашего железа: 16 ГБ ОЗУ + RTX 4060

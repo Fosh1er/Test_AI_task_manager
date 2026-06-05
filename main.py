@@ -11,7 +11,6 @@ try:
     import httpx
     def dummy_get_proxy_map(self, proxy, allow_env_proxies):
         return {}
-    # Перезаписываем метод поиска прокси в самом классе Client
     httpx.Client._get_proxy_map = dummy_get_proxy_map
     print("SOCKS4 protection: httpx proxy map disabled successfully.")
 except Exception as e:
@@ -23,8 +22,8 @@ from logger import logger
 from pipeline import run_pipeline
 import config
 
-# Принудительный сброс буфера вывода для PyCharm/IDE
 os.environ['PYTHONUNBUFFERED'] = '1'
+
 
 def load_transcript(filename: str) -> str:
     filepath = Path(config.TRANSCRIPTS_DIR) / filename
@@ -32,6 +31,7 @@ def load_transcript(filename: str) -> str:
         logger.error(f"Файл не найден: {filepath}")
         raise FileNotFoundError(filepath)
     return filepath.read_text(encoding="utf-8")
+
 
 def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
@@ -41,17 +41,18 @@ def normalize_df(df: pd.DataFrame) -> pd.DataFrame:
             .sort_values(by=list(df.columns))
             .reset_index(drop=True))
 
+
 def run_stability_test(filename: str, meeting_date: str):
     logger.info("=" * 60)
     logger.info(f"Тестирование файла: {filename} (Дата встречи: {meeting_date})")
 
     transcript = load_transcript(filename)
-    llm_kwargs = config.LLM_KWARGS if config.PROVIDER_MODE == "local" else {"api_key": config.OPENAI_API_KEY}
+    llm_kwargs = config.LLM_KWARGS
 
     results = []
     stats = []
 
-    for run in range(1, 6):
+    for run in range(1, 3):
         logger.info(f"--- Прогон {run}/5 ---")
         tasks = run_pipeline(
             transcript,
@@ -64,7 +65,6 @@ def run_stability_test(filename: str, meeting_date: str):
         )
 
         df = pd.DataFrame(tasks)
-        # Приводим к нужному формату колонок согласно ТЗ
         if not df.empty:
             df = df.rename(columns={
                 "блок": "Блок",
@@ -77,7 +77,6 @@ def run_stability_test(filename: str, meeting_date: str):
 
         results.append(df)
 
-        # Считаем статистику для отчета
         if not df.empty:
             counts = df['Блок'].value_counts()
             completed = counts.get("Выполненные", 0)
@@ -95,7 +94,6 @@ def run_stability_test(filename: str, meeting_date: str):
             "total": total
         })
 
-    # Вывод отчета о стабильности
     print("\nОТЧЕТ ПО СТАБИЛЬНОСТИ:")
     all_same = True
     first_stat = stats[0]
@@ -111,7 +109,6 @@ def run_stability_test(filename: str, meeting_date: str):
     if not all_same:
         print(f"Отличаются прогоны: {', '.join(diff_runs)}")
 
-    # Вывод итогового датасета (первого прогона)
     print("\nИТОГОВЫЙ ДАТАСЕТ (Прогон 1):")
     if not results[0].empty:
         print(results[0].to_string())
@@ -119,12 +116,9 @@ def run_stability_test(filename: str, meeting_date: str):
         print("Задачи не найдены.")
     print("\n" + "=" * 60 + "\n")
 
+
 def main():
-    # Соответствие файлов и дат встречи из ТЗ
     test_files = {
-        #"transcript.txt": "2026-04-13",
-        #"transcript2.txt": "2026-04-29",
-        #"transcript3.txt": "2026-04-15",
         "transcript_discord.txt": "2026-06-05"
     }
 
@@ -133,6 +127,7 @@ def main():
             run_stability_test(filename, date)
         except Exception as e:
             logger.exception(f"Ошибка при обработке файла {filename}: {e}")
+
 
 if __name__ == "__main__":
     main()
