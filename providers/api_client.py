@@ -173,7 +173,6 @@ class OpenRouter:
         logger.error(f"OpenRouter: Все {self.MAX_RETRIES} попыток исчерпаны.")
         raise last_exception
 
-    @staticmethod
     def _extract_retry_after(exc: RateLimitError) -> int:
         """Извлекает Retry-After из заголовков или metadata, по умолчанию 30с."""
         # 1. Пробуем заголовки

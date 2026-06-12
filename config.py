@@ -6,6 +6,7 @@ load_dotenv()
 PROVIDER_MODE = "openrouter"
 #MODEL_NAME = "qwen/qwen3-next-80b-a3b-instruct:free"  # ← правильный формат
 MODEL_NAME = "openai/gpt-oss-120b:free"
+#MODEL_NAME = "venice/beta"
 # или любая другая: "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash-001"
 #PROVIDER_MODE = os.getenv("LLM_PROVIDER", "openrouter")   # "local" или "api"
 #MODEL_NAME = os.getenv("LLM_MODEL", "qwen3.5:9b")   # имя модели в Ollama или OpenAI
