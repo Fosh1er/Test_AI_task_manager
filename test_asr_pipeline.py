@@ -7,8 +7,8 @@ os.environ["TORCHAUDIO_USE_TORCHCODEC"] = "0"
 from mini_diarizator import Diarizator
 from transcribator import Transcribator
 
-AUDIO_PATH = "audio/discord.wav"
-OUTPUT_TXT = "transcripts/transcript_discord.txt"
+AUDIO_PATH = "audio/demo_usage.wav"
+OUTPUT_TXT = "transcripts/transcript_demo.txt"
 HF_TOKEN = os.getenv("HF_TOKEN")
 DEVICE = "cpu"
 SPEAKER_MAP = {}

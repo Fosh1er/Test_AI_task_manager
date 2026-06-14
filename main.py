@@ -53,8 +53,8 @@ def run_stability_test(filename: str, meeting_date: str):
     results = []
     stats = []
 
-    for run in range(1, 6):
-        logger.info(f"--- Прогон {run}/5 ---")
+    for run in range(1, 2):
+        logger.info(f"--- Прогон {run}/2 ---")
         tasks = run_pipeline(
             transcript,
             meeting_date=meeting_date,
@@ -146,9 +146,10 @@ def run_stability_test(filename: str, meeting_date: str):
 
 def main():
     test_files = {
-        "transcript.txt": "2026-04-13",
-        "transcript2.txt": "2026-04-29",
-        "transcript3.txt": "2026-04-15",
+        #"transcript.txt": "2026-04-13",
+        #"transcript2.txt": "2026-04-29",
+        #"transcript3.txt": "2026-04-15",
+        "transcript_demo.txt": "2026-06-13"
     }
 
     for filename, date in test_files.items():
