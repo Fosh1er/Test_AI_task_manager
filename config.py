@@ -15,21 +15,13 @@ MODEL_NAME = "openai/gpt-oss-120b:free"
 # Настройки для вашего железа: 16 ГБ ОЗУ + RTX 4060
 
 LLM_KWARGS = {
+    "temperature": 0.0,  # или 0.1, если API провайдера не поддерживает 0.0
+    "top_p": 0.1,
     "num_ctx": int(os.getenv("OLLAMA_NUM_CTX", "4096")),
     "num_thread": int(os.getenv("OLLAMA_NUM_THREAD", "4")),
     "num_gpu": int(os.getenv("OLLAMA_NUM_GPU", "-1")),   # -1 = все слои на GPU
 }
-# Переключение источника: local или yandex_disk
-TRANSCRIPT_SOURCE=yandex_disk
 
-# === Вариант 1: Через OAuth токен (для приватных папок) ===
-# Получить токен можно на странице: https://yandex.ru/dev/disk/poligon/
-YANDEX_DISK_TOKEN=ваш_oauth_токен
-# Путь к папке на диске (без слешей по краям). Если файлы в корне, оставьте пустым.
-YANDEX_DISK_PATH=transcripts
-
-# === Вариант 2: Через публичную ссылку (если папка/файл опубликованы) ===
-# YANDEX_DISK_PUBLIC_KEY=ключ_из_публичной_ссылки
 # Если используется OpenAI API, можно задать модель и ключ здесь
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 PROXY_URL = os.getenv("HTTP_PROXY", "socks5://127.0.0.1:10808")

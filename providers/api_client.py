@@ -23,15 +23,26 @@ class OpenAIProvider:
 
     def complete(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
         start_time = time.time()
+
+        # ИСПРАВЛЕНО: Жестко фиксируем параметры для стабильности
+        # temperature=0.0 делает модель максимально детерминированной
+        # top_p=0.1 отсекает маловероятные варианты
+        temp = kwargs.get("temperature", 0.0)
+        top_p = kwargs.get("top_p", 0.1)
+        seed = kwargs.get("seed", 42)  # Фиксированный seed для воспроизводимости
+
+        logger.debug(f"OpenAI: Запрос с параметрами: temp={temp}, top_p={top_p}, seed={seed}")
+
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=kwargs.get("temperature", 0.01),
-            max_tokens=kwargs.get("max_tokens", 1024),
-            seed=kwargs.get("seed")
+            temperature=temp,
+            top_p=top_p,
+            max_tokens=kwargs.get("max_tokens", 2048),  # Увеличил для больших транскриптов
+            seed=seed
         )
         elapsed = time.time() - start_time
         content = response.choices[0].message.content
@@ -54,8 +65,8 @@ class OpenAIProvider:
 class OpenRouter:
     # Параметры retry
     MAX_RETRIES = 5
-    BASE_DELAY = 5       # базовая задержка в секундах
-    MAX_DELAY = 120      # максимум между попытками
+    BASE_DELAY = 5  # базовая задержка в секундах
+    MAX_DELAY = 120  # максимум между попытками
 
     def __init__(self, model: str = "qwen/qwen3-next-80b-a3b-instruct:free",
                  api_key: str = None, proxy: str = None,
@@ -100,14 +111,26 @@ class OpenRouter:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_prompt})
 
+        # ИСПРАВЛЕНО: Детерминированные параметры
+        # Примечание: некоторые free-модели на OpenRouter не поддерживают temperature=0.0.
+        # Если будет ошибка API, замените 0.0 на 0.0001
+        temp = kwargs.get("temperature", 0.0)
+        top_p = kwargs.get("top_p", 0.1)
+        seed = kwargs.get("seed", 42)
+
         create_kwargs = {
             "model": self.model,
             "messages": messages,
-            "temperature": kwargs.get("temperature", 0.01),
-            "max_tokens": kwargs.get("max_tokens", 1024),
+            "temperature": temp,
+            "top_p": top_p,
+            "max_tokens": kwargs.get("max_tokens", 2048),
         }
-        if "seed" in kwargs and kwargs["seed"] is not None:
-            create_kwargs["seed"] = kwargs["seed"]
+
+        # Seed поддерживается не всеми моделями, передаем только если задан
+        if seed is not None:
+            create_kwargs["seed"] = seed
+
+        logger.debug(f"OpenRouter: Запрос с параметрами: temp={temp}, top_p={top_p}, seed={seed}")
 
         last_exception = None
 
@@ -144,7 +167,6 @@ class OpenRouter:
 
             except RateLimitError as e:
                 last_exception = e
-                # Пытаемся достать Retry-After из заголовков
                 retry_after = self._extract_retry_after(e)
                 delay = min(retry_after, self.MAX_DELAY)
                 logger.warning(
@@ -156,7 +178,6 @@ class OpenRouter:
 
             except (APITimeoutError, APIError) as e:
                 last_exception = e
-                # Экспоненциальный backoff для других API-ошибок
                 delay = min(self.BASE_DELAY * (2 ** (attempt - 1)), self.MAX_DELAY)
                 logger.warning(
                     f"OpenRouter: API ошибка ({type(e).__name__}). "
@@ -166,7 +187,6 @@ class OpenRouter:
                 time.sleep(delay)
 
             except Exception as e:
-                # Не-API ошибки (например, сетевые) — не ретраим
                 logger.error(f"OpenRouter: Неожиданная ошибка: {e}")
                 raise
 
@@ -175,7 +195,6 @@ class OpenRouter:
 
     def _extract_retry_after(exc: RateLimitError) -> int:
         """Извлекает Retry-After из заголовков или metadata, по умолчанию 30с."""
-        # 1. Пробуем заголовки
         try:
             headers = getattr(exc, 'headers', {}) or {}
             ra = headers.get('Retry-After') or headers.get('retry-after')
@@ -184,7 +203,6 @@ class OpenRouter:
         except Exception:
             pass
 
-        # 2. Пробуем body.metadata
         try:
             body = getattr(exc, 'body', {}) or {}
             metadata = body.get('metadata', {}) or {}
@@ -194,5 +212,4 @@ class OpenRouter:
         except Exception:
             pass
 
-        # 3. Дефолт
         return 30

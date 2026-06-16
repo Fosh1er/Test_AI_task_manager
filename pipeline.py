@@ -1,7 +1,6 @@
 from langchain_core.runnables import RunnableLambda
 import json
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 
 from logger import logger
 from provider import Provider
@@ -12,25 +11,46 @@ from date_normalizer import normalize_tasks_dates
 
 
 def extract_json_from_text(text: str) -> str:
-    """Извлекает JSON-массив из текста, удаляя шум и markdown."""
+    """
+    Универсальный экстрактор JSON.
+    Находит и извлекает либо JSON-массив [...], либо JSON-объект {...},
+    игнорируя markdown-разметку и лишний текст.
+    """
     if not text:
-        return "[]"
-    # Убираем markdown-обёртку типа ```json ... ```
+        return ""
+
     text = text.strip()
+
+    # 1. Убираем markdown-обёртку типа ```json ... ```
     if text.startswith("```"):
-        # Снимаем первую и последнюю строку
         lines = text.split("\n")
         if lines[0].startswith("```"):
             lines = lines[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
-        text = "\n".join(lines)
+        text = "\n".join(lines).strip()
 
-    start = text.find('[')
-    end = text.rfind(']')
-    if start == -1 or end == -1 or end < start:
-        return "[]"
-    return text[start:end + 1]
+    # 2. Определяем, что это: объект (dict) или массив (list)
+    start_obj = text.find('{')
+    start_arr = text.find('[')
+
+    # Если нет ни того, ни другого
+    if start_obj == -1 and start_arr == -1:
+        return ""
+
+    # Если объект встречается раньше (или массива вообще нет) -> это dict (валидатор)
+    if start_obj != -1 and (start_arr == -1 or start_obj < start_arr):
+        end_obj = text.rfind('}')
+        if end_obj != -1 and end_obj > start_obj:
+            return text[start_obj:end_obj + 1]
+
+    # Иначе это массив (экстрактор, агрегатор)
+    if start_arr != -1:
+        end_arr = text.rfind(']')
+        if end_arr != -1 and end_arr > start_arr:
+            return text[start_arr:end_arr + 1]
+
+    return ""
 
 
 def build_extraction_chain(llm):
@@ -64,12 +84,15 @@ def build_validation_chain(llm):
 
 
 def _safe_parse_json(raw: str) -> list | dict:
-    """Безопасный парсинг JSON."""
+    """Безопасный парсинг JSON (список или словарь)."""
+    if not raw:
+        return []
     try:
-        return JsonOutputParser().parse(raw)
+        # Используем стандартный json.loads, он надежнее для сырых строк
+        return json.loads(raw)
     except Exception as e:
         logger.warning(f"JSON parse error: {e}")
-        logger.debug(f"Raw: {raw[:500]}")
+        logger.debug(f"Raw text (first 500 chars): {raw[:500]}")
         return []
 
 
@@ -157,11 +180,13 @@ def run_pipeline(
                 "meeting_date": meeting_date,
             })
             validation = _safe_parse_json(raw_val)
+
+            # ИСПРАВЛЕНИЕ: Теперь validation корректно распознается как dict
             if isinstance(validation, dict):
                 final_tasks = _apply_validation(final_tasks, validation)
-                logger.info(f"После валидации задач: {len(final_tasks)}")
+                logger.info(f"✅ Валидатор сработал! После валидации задач: {len(final_tasks)}")
             else:
-                logger.warning("Валидация вернула не dict, пропускаем")
+                logger.warning(f"Валидация вернула не dict (получено: {type(validation)}), пропускаем")
         except Exception as e:
             logger.warning(f"Ошибка валидации (не критично): {e}")
 
